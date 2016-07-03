@@ -4,7 +4,10 @@
 import requests
 import re
 from lxml import etree
-
+import time
+import sys
+reload(sys)
+sys.setdefaultencoding("utf-8")
 session = requests.session()
 
 URL_BAIDU_INDEX = u'http://www.baidu.com/'
@@ -31,49 +34,51 @@ def get_qiandao(html_code):
     sx = html.xpath('//table/tr/td[2]/a/text()')
     if sx:
         url = '{0}{1}'.format(URL_TIEBA_ROOT, html.xpath('//table/tr/td[2]/a/@href')[0])
-        try:
-        	print('签到', end='')
-        except:
-        	print '签到',
+        print '签到', 
         html = etree.HTML(session.get(url).content)
         data = html.xpath('//span[@class="light"]/text()')
-        print(data[0], data[1], end='')
+        print data[0], data[1], 
     else:
-    	try:
-        	print('已签到', end='')
-        except:
-        	print '已签到',
+        print '已签到',
 
 
 if __name__ == '__main__':
     # 设置用户名、密码
-    username = 'Your Username'
-    password = 'Your Password'
-
-    reqReturn = session.get(URL_BAIDU_INDEX)
-    tokenReturn = session.get(URL_BAIDU_TOKEN)
-    matchVal = re.search('"token" : "(?P<tokenVal>.*?)"', tokenReturn.text)
-    tokenVal = matchVal.group('tokenVal')
-    # 构造登录请求参数，该请求数据是通过抓包获得，对应https://passport.baidu.com/v2/api/?login请求
-    postData = {
-        'username': username,
-        'password': password,
-        'u': 'https://www.baidu.com/',
-        'tpl': 'pp',
-        'token': tokenVal,
-        'staticpage': 'https://www.baidu.com/cache/user/html/v3Jump.html',
-        'isPhone': 'false',
-        'charset': 'UTF-8',
-        'callback': 'parent.bd__pcbs__hb4wvo'
-    }
-    loginRequest = session.post(URL_BAIDU_LOGIN, postData)
-    html_code = session.get('http://tieba.baidu.com/mo/m?tn=bdFBW&tab=favorite').content
-    tieba = get_tieba_data(html_code)
-    print('---------百度贴吧自动签到程序---------')
-    print('---------作者:　　 bayonet----------')
-    for value in tieba:
-        url = '{0}{1}'.format(URL_TIEBA_ROOT, value.get('url'))
-        html_code = session.get(url).content
-        print(value.get('name') + ': ', end='')
-        get_qiandao(html_code)
-        print(' 等级:   {0}  经验: {1}'.format(value.get('levle'), value.get('exp')))
+    username = '你的账号'
+    password = '你的密码'
+    while True:
+        reqReturn = session.get(URL_BAIDU_INDEX)
+        tokenReturn = session.get(URL_BAIDU_TOKEN)
+        matchVal = re.search('"token" : "(?P<tokenVal>.*?)"', tokenReturn.text)
+        tokenVal = matchVal.group('tokenVal')
+        # 构造登录请求参数，该请求数据是通过抓包获得，对应https://passport.baidu.com/v2/api/?login请求
+        postData = {
+            'username': username,
+            'password': password,
+            'u': 'https://www.baidu.com/',
+            'tpl': 'pp',
+            'token': tokenVal,
+            'staticpage': 'https://www.baidu.com/cache/user/html/v3Jump.html',
+            'isPhone': 'false',
+            'charset': 'UTF-8',
+            'callback': 'parent.bd__pcbs__hb4wvo'
+        }
+        loginRequest = session.post(URL_BAIDU_LOGIN, postData)
+        error = re.findall('&error=(.*?)\'', loginRequest.content)[0]
+        if ('0' != error):
+            print "登陆失败！"
+            # 登陆失败 等待3秒在执行
+            time.sleep(3)
+            continue
+        html_code = session.get('http://tieba.baidu.com/mo/m?tn=bdFBW&tab=favorite').content
+        tieba = get_tieba_data(html_code)
+        print('---------百度贴吧自动签到程序---------')
+        print('---------作者:　　 bayonet----------')
+        for value in tieba:
+            print "{0} >>  ".format(time.strftime('%Y-%m-%d %H:%M:%S')) ,
+            url = '{0}{1}'.format(URL_TIEBA_ROOT, value.get('url'))
+            html_code = session.get(url).content
+            print value.get('name') + ': ',
+            get_qiandao(html_code)
+            print('等级:   {1}  经验: {2}'.format(time.strftime('%Y-%m-%d %H:%M:%S'), value.get('levle'), value.get('exp')))
+        break
